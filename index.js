@@ -1,60 +1,30 @@
-const express = require('express');
-const qrCode = require('qrcode');
-const bodyParser = require('body-parser');
+var express = require('express');
+var bodyParser = require('body-parser');
+var mongoose = require('mongoose');
+const cors = require('cors')
 
-const app = express();
-const PORT = 3000;
+var app = new express();
+var apiRoutes = require('./Router/user.js');
+var mongodb = require('./Mongo/DB.js');
 
-// Middleware to parse JSON bodies
-app.use(bodyParser.json());
+app.use(cors())
+app.use(bodyParser.urlencoded({ extended : true}));
+app.use(bodyParser.json())
+app.use(express.json());
 
-// Generate a unique token for each authentication request
-const generateToken = () => {
-  return Math.random().toString(36).substring(2, 10);
-};
-
-// Store tokens temporarily (not recommended for production, use a database instead)
-const tokens = {};
-
-// Endpoint to request QR code authentication
-app.get('/auth/token', async (req, res) => {
-  try {
-    // Generate a unique token
-    const token = generateToken();
-
-    // Store the token
-    tokens[token] = false;
-
-    // Generate QR code for the token
-    const qrImage = await qrCode.toDataURL(token);
-
-    res.json({ token, qrImage });
-  } catch (error) {
-    console.error('Error generating QR code:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+const mongo = mongoose.connect(mongodb.url);
+mongo.then(() =>{
+    console.log('Mongo_DB Connected Successfully')
+}, error =>{
+    console.log(error,'Error, While connecting to Mongo_DB somthing went wrong');
 });
 
-// Endpoint to verify the scanned token
-app.post('/auth/verify', (req, res) => {
-  try {
-    const { token } = req.body;
+var port = process.env.PORT || 5000;
+app.listen(port,() => {console.log("Server running on port "+port)});
 
-    // Check if the token exists and is valid
-    if (tokens[token] !== undefined) {
-      // Mark the token as authenticated
-      tokens[token] = true;
-      res.json({ isAuthenticated: true });
-    } else {
-      res.status(400).json({ isAuthenticated: false, error: 'Invalid token' });
-    }
-  } catch (error) {
-    console.error('Error verifying token:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+app.use(cors());
+app.get('/',(req,res) =>  res.send('Welcome to Signin Page'));
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+app.use('/api',apiRoutes);
+
+module.exports = app;
