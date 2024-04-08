@@ -3,8 +3,8 @@ const qrCode = require('qrcode');
 const bodyParser = require('body-parser');
 const router = express.Router();
 const Token = require ('../Model/model')
-app.use(bodyParser.json());
-
+router.use(bodyParser.json());
+router.use(express.json());
 
 const generateToken = () => {
     return Math.random().toString(36).substring(2, 10);
