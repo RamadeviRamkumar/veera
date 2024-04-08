@@ -3,7 +3,7 @@ const qrCode = require('qrcode');
 const bodyParser = require('body-parser');
 const router = express.Router();
 const Token = require ('../Model/model')
-// app.use(bodyParser.json());
+app.use(bodyParser.json());
 
 
 const generateToken = () => {
