@@ -1,10 +1,18 @@
-// models/Token.js
-
 const mongoose = require('mongoose');
 
 const tokenSchema = new mongoose.Schema({
-  token: { type: String, required: true, unique: true },
-  isAuthenticated: { type: Boolean, required: true, default: false }
+  channel: {
+    type: String,
+    required: true,
+    unique: true 
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  eventData: {
+    type: Object 
+  }
 });
 
 const Token = mongoose.model('Token', tokenSchema);

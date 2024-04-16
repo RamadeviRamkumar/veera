@@ -1,50 +1,85 @@
 const express = require("express");
-const qrCode = require("qrcode");
 const bodyParser = require("body-parser");
+const crypto = require('crypto');
 const router = express.Router();
+const Pusher = require('pusher');
 const Token = require("../Model/model");
 
 router.use(bodyParser.json());
 router.use(express.json());
 
-const generateToken = () => {
-  return Math.random().toString(36).substring(2, 10);
-};
+const pusher = new Pusher({
+  appId: '1788589',
+  key: 'f9d50dc5fcf1106227ce',
+  secret: '8356f54260e9de57f040',
+  cluster: 'ap2',
+  useTLS: true
+});
 
-const tokens = {};
+router.get('/generateQR', async (req, res) => {
+  const tokenValue = crypto.randomBytes(64).toString('hex');
+  const channelData = new Date().getDate() + "-" + new Date().getMonth() + "-" + new Date().getMinutes();
+  const channelDataHash = crypto.createHash('md5').update(channelData + "||" + tokenValue).digest("hex");
 
-router.get("/auth/token", async (req, res) => {
   try {
-    const token = generateToken();
+    // Save the generated QR data to the database
+    const token = new Token({
+      channel: channelDataHash
+    });
+    await token.save();
 
-    await Token.create({ token, isAuthenticated: false });
-
-    const qrImage = await qrCode.toDataURL(token);
-
-    res.json({ token, qrImage });
-  } catch (error) {
-    console.error("Error generating QR code:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(200).json({
+      success: true,
+      msg: "QR DATA Created and saved to database",
+      data: {
+        channel: channelDataHash
+      }
+    });
+  } catch (err) {
+    console.error("Error saving token:", err);
+    return res.status(500).json({
+      success: false,
+      msg: "Error saving token to database"
+    });
   }
 });
 
-router.post("/auth/verify", async (req, res) => {
+router.post('/triggerEvent', async (req, res) => {
+  const { channel, user_id } = req.body;
+
+  // Generate a token
+  const token = crypto.randomBytes(64).toString('hex');
+
   try {
-    const { token } = req.body;
+    // Save the token data to the database or use it as needed in your application logic
+    const newToken = new Token({
+      channel,
+      token,
+      user_id
+    });
+    await newToken.save();
 
-    const foundToken = await Token.findOne({ token });
+    // Trigger the Pusher event
+    const resp = await pusher.trigger(channel, "login-event", {
+      token,
+      user_id
+    });
 
-    if (foundToken) {
-      foundToken.isAuthenticated = true;
-      await foundToken.save();
-
-      res.json({ isAuthenticated: true });
-    } else {
-      res.status(400).json({ isAuthenticated: false, error: "Invalid token" });
-    }
-  } catch (error) {
-    console.error("Error verifying token:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(200).json({
+      success: true,
+      msg: "Event triggered successfully and token generated",
+      data: {
+        token,
+        resp
+      }
+    });
+  } catch (e) {
+    console.error("Error triggering event:", e);
+    return res.status(500).json({
+      success: false,
+      msg: "Error triggering event or generating token",
+      error: e.message
+    });
   }
 });
 
