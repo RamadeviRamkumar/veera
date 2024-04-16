@@ -16,7 +16,7 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
-router.get("/generateQR", async (req, res) => {
+router.get("/qr", async (req, res) => {
   const tokenValue = crypto.randomBytes(64).toString("hex");
   const channelData =
     new Date().getDate() +
