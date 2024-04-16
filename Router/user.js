@@ -6,7 +6,6 @@ const Pusher = require("pusher");
 const Token = require("../Model/model");
 
 router.use(bodyParser.json());
-router.use(express.json());
 
 const pusher = new Pusher({
   appId: "1788589",
@@ -17,27 +16,28 @@ const pusher = new Pusher({
 });
 
 router.get("/qr", async (req, res) => {
-  const tokenValue = crypto.randomBytes(64).toString("hex");
-  const channelData =
-    new Date().getDate() +
-    "-" +
-    new Date().getMonth() +
-    "-" +
-    new Date().getMinutes();
-  const channelDataHash = crypto
-    .createHash("md5")
-    .update(channelData + "||" + tokenValue)
-    .digest("hex");
-
   try {
+    const tokenValue = crypto.randomBytes(64).toString("hex");
+    const channelData =
+      new Date().getDate() +
+      "-" +
+      new Date().getMonth() +
+      "-" +
+      new Date().getMinutes();
+    const channelDataHash = crypto
+      .createHash("md5")
+      .update(channelData + "||" + tokenValue)
+      .digest("hex");
+
     const token = new Token({
       channel: channelDataHash,
     });
+
     await token.save();
 
     return res.status(200).json({
       success: true,
-      msg: "QR DATA Created and saved to database",
+      msg: "QR data created and saved to database",
       data: {
         channel: channelDataHash,
       },
@@ -47,6 +47,7 @@ router.get("/qr", async (req, res) => {
     return res.status(500).json({
       success: false,
       msg: "Error saving token to database",
+      error: err.message, // Include the error message for debugging
     });
   }
 });
@@ -54,14 +55,15 @@ router.get("/qr", async (req, res) => {
 router.post("/triggerEvent", async (req, res) => {
   const { channel, user_id } = req.body;
 
-  const token = crypto.randomBytes(64).toString("hex");
-
   try {
+    const token = crypto.randomBytes(64).toString("hex");
+
     const newToken = new Token({
       channel,
       token,
       user_id,
     });
+
     await newToken.save();
 
     const resp = await pusher.trigger(channel, "login-event", {
